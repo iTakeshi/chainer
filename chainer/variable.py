@@ -79,6 +79,9 @@ class Variable(object):
         initializer (~chainer.Initializer): Initializer of the data array.
             If `data` is None, this object is used for initializing the data
             array in the :meth:`initialize` method.
+        update_rule: :class:`~chainer.optimizer.UpdateRule` instance that
+            updates this variable as a parameter. This argument is set to
+            :attr:`update_rule`.
 
     Attributes:
         data: Data array of type either :class:`numpy.ndarray` or
@@ -89,6 +92,9 @@ class Variable(object):
             variable is not created by any function.
         initializer: Initializer of the data array. It is used for initializing
             the data array of an uninitialized variable.
+        update_rule: :class:`~chainer.optimizer.UpdateRule` instance that
+            updates this variable as a parameter. This argument is set to
+            :attr:`update_rule`.
 
     """
 
@@ -96,7 +102,8 @@ class Variable(object):
     _grad_initializer = None
     _initial_device = -1
 
-    def __init__(self, data=None, name=None, grad=None, initializer=None):
+    def __init__(self, data=None, name=None, grad=None, initializer=None,
+                 update_rule=None):
         if data is None:
             self.initializer = (
                 initializers.NaN() if initializer is None else initializer)
@@ -117,6 +124,7 @@ Actual: {0}'''.format(type(data))
         self.creator = None
 
         self.name = name
+        self.update_rule = update_rule
 
     def __copy__(self):
         copied = Variable()
@@ -124,7 +132,7 @@ Actual: {0}'''.format(type(data))
         return copied
 
     def __reduce__(self):
-        return Variable, (self.data, self.name, self._grad)
+        return Variable, (self.data, self.name, self._grad, self.update_rule)
 
     def __repr__(self):
         if self.name:
@@ -577,6 +585,16 @@ Actual: {0}'''.format(type(data))
 
         self._data[0] = data
         self.grad = grad
+
+    def update(self):
+        """Updates the data array using the gradient and the update rule.
+
+        This method updates the variable using the update rule attached to this
+        variable.
+
+        """
+        if self.update_rule is not None:
+            self.update_rule.update(self)
 
     def __lt__(self, other):
         raise NotImplementedError()
